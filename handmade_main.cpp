@@ -13,6 +13,7 @@ int main(int argc, char** argv) {
 
 			while (window.Running) {
 
+				handmade::VulkanStateDrawFrame(&vulkanState);
 				handmade::WindowUpdate(&window);
 			}
 		}

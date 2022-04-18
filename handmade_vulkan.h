@@ -13,6 +13,19 @@
 
 namespace handmade {
 
+	struct VulkanShaderCode {
+
+		u8* Data;
+		u32 Size;
+	};
+
+	struct VulkanPipeline {
+
+		VkRenderPass RenderPass;
+		VkPipelineLayout PipeLineLayout;
+		VkPipeline GraphicsPipeline;
+	};
+
 	struct VulkanState {
 
 		VkInstance Instance;
@@ -30,6 +43,20 @@ namespace handmade {
 		u32 SwapChainImageCount;
 		VkFormat SwapChainImageFormat;
 		VkExtent2D SwapChainExtent;
+		VkImageView* SwapChainImageViews;
+		u32 SwapChainImageViewCount;
+
+		VulkanPipeline Pipeline;
+
+		VkFramebuffer* SwapChainFramebuffers;
+		u32 SwapChainFramebufferCount;
+
+		VkCommandPool CommandPool;
+		VkCommandBuffer CommandBuffer;
+
+		VkSemaphore ImageAvailableSemaphore;
+		VkSemaphore RenderFinishedSemaphore;
+		VkFence InFlightFence;
 	};
 
 	struct VulkanQueueFamilyIndices {
@@ -51,6 +78,9 @@ namespace handmade {
 
 	bool VulkanStateInit(VulkanState* state, Window* window);
 	bool VulkanStateDestroy(VulkanState* state);
+	bool VulkanStateDrawFrame(VulkanState* state);
+
+	VulkanShaderCode VulkanLoadShaderCode(const char* path);
 }
 
 #endif //HANDMADE_VULKAN_H
