@@ -96,3 +96,6 @@ set_property(TARGET ${Recipe_Name} PROPERTY CXX_STANDARD_REQUIRED ON)
 # Define C version to be used for building the project
 set_property(TARGET ${Recipe_Name} PROPERTY C_STANDARD 11)
 set_property(TARGET ${Recipe_Name} PROPERTY C_STANDARD_REQUIRED ON)
+
+# Copy assets folder
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/binaries)
