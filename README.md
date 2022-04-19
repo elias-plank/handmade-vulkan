@@ -2,7 +2,7 @@
 
 Vulkan Programs written in C++ with no STL.
 
-![vulkan-logo](https://user-images.githubusercontent.com/45200003/164103181-005812ba-31bd-4749-94df-73645ab504d7.png)
+![vulkan-logo](https://www.amd.com/system/files/2021-05/48981-vulkan-logo-992x394.png)
 
 ## Requirements
 - [CMake](https://cmake.org)
