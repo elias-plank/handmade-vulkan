@@ -55,7 +55,7 @@ namespace handmade {
 		appInfo.pApplicationName = "Handmade Vulkan";
 		appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 		appInfo.pEngineName = "Vulkan Engine";
-		appInfo.apiVersion = VK_API_VERSION_1_3;
+		appInfo.apiVersion = VK_API_VERSION_1_1;
 
 		VkInstanceCreateInfo createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -183,7 +183,7 @@ namespace handmade {
 		VkWin32SurfaceCreateInfoKHR createInfo{};
 		createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 		createInfo.hwnd = glfwGetWin32Window(window->NativeHandle);
-		createInfo.hinstance = GetModuleHandle(nullptr);
+		createInfo.hinstance = GetModuleHandleA(nullptr);
 
 		return vkCreateWin32SurfaceKHR(state->Instance, &createInfo, nullptr, &state->Surface) == VK_SUCCESS;
 	}
@@ -436,7 +436,7 @@ namespace handmade {
 
 	static VkExtent2D VulkanChooseSwapExtent(VkSurfaceCapabilitiesKHR* capabilities, Window* window) {
 
-		if (capabilities->currentExtent.width != INFINITY) {
+		if (capabilities->currentExtent.width != UINT32_MAX) {
 
 			return capabilities->currentExtent;
 		}
