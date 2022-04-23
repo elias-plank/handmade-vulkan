@@ -27,6 +27,7 @@ namespace handmade {
 	};
 
 	bool WindowCreate(Window* window, const char* title, u32 width, u32 height);
+	bool WindowIsRunning(Window* window);
 	void WindowUpdate(Window* window);
 	void WindowDestroy(Window* window);
 }

@@ -6,10 +6,11 @@ static const bool EnableValidationLayers = true;
 static const bool EnableValidationLayers = false;
 #endif
 
-static const char* ValidationLayers[] = { "VK_LAYER_KHRONOS_validation" };
-static const char* DeviceExtensions[] = { "VK_KHR_swapchain" };
-
 namespace handmade {
+
+	static const char* ValidationLayers[] = { "VK_LAYER_KHRONOS_validation" };
+	static const char* DeviceExtensions[] = { "VK_KHR_swapchain" };
+	static const u32 FramesInFlight = 2;
 
 	static bool VulkanCheckValidationLayerSupport() {
 		
@@ -508,21 +509,21 @@ namespace handmade {
 		createInfo.clipped = VK_TRUE;
 		createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-		VkResult result = vkCreateSwapchainKHR(state->Device, &createInfo, nullptr, &state->SwapChain);
+		VkResult result = vkCreateSwapchainKHR(state->Device, &createInfo, nullptr, &state->SwapChain.SwapChain);
 		if (result != VK_SUCCESS) {
 
 			return false;
 		}
 
-		vkGetSwapchainImagesKHR(state->Device, state->SwapChain, &imageCount, nullptr);
-		state->SwapChainImages = (VkImage*)malloc(imageCount * sizeof(VkImage));
+		vkGetSwapchainImagesKHR(state->Device, state->SwapChain.SwapChain, &imageCount, nullptr);
+		state->SwapChain.Images = (VkImage*)malloc(imageCount * sizeof(VkImage));
 
-		if (state->SwapChainImages) {
+		if (state->SwapChain.Images) {
 
-			vkGetSwapchainImagesKHR(state->Device, state->SwapChain, &imageCount, state->SwapChainImages);
-			state->SwapChainImageFormat = surfaceFormat.format;
-			state->SwapChainExtent = extent;
-			state->SwapChainImageCount = imageCount;
+			vkGetSwapchainImagesKHR(state->Device, state->SwapChain.SwapChain, &imageCount, state->SwapChain.Images);
+			state->SwapChain.ImageFormat = surfaceFormat.format;
+			state->SwapChain.Extent = extent;
+			state->SwapChain.ImageCount = imageCount;
 
 			return true;
 		}
@@ -534,17 +535,17 @@ namespace handmade {
 
 	static bool VulkanCreateImageViews(VulkanState* state) {
 
-		state->SwapChainImageViews = (VkImageView*)malloc(state->SwapChainImageCount * sizeof(VkImageView));
-		state->SwapChainImageViewCount = state->SwapChainImageCount;
+		state->SwapChain.ImageViews = (VkImageView*)malloc(state->SwapChain.ImageCount * sizeof(VkImageView));
+		state->SwapChain.ImageViewCount = state->SwapChain.ImageCount;
 
 		bool complete = true;
-		for (u32 i = 0; i < state->SwapChainImageCount; i++) {
+		for (u32 i = 0; i < state->SwapChain.ImageCount; i++) {
 
 			VkImageViewCreateInfo createInfo{};
 			createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			createInfo.image = *(state->SwapChainImages + i);
+			createInfo.image = *(state->SwapChain.Images + i);
 			createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-			createInfo.format = state->SwapChainImageFormat;
+			createInfo.format = state->SwapChain.ImageFormat;
 			createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 			createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 			createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -555,7 +556,7 @@ namespace handmade {
 			createInfo.subresourceRange.baseArrayLayer = 0;
 			createInfo.subresourceRange.layerCount = 1;
 
-			VkImageView* imageView = (state->SwapChainImageViews + i);
+			VkImageView* imageView = (state->SwapChain.ImageViews + i);
 			if (vkCreateImageView(state->Device, &createInfo, nullptr, imageView) != VK_SUCCESS) {
 
 				complete = false;
@@ -584,7 +585,7 @@ namespace handmade {
 	static bool VulkanCreateRenderPass(VulkanState* state) {
 
 		VkAttachmentDescription colorAttachment{};
-		colorAttachment.format = state->SwapChainImageFormat;
+		colorAttachment.format = state->SwapChain.ImageFormat;
 		colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 		colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 		colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -659,14 +660,14 @@ namespace handmade {
 		VkViewport viewport{};
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (f32)state->SwapChainExtent.width;
-		viewport.height = (f32)state->SwapChainExtent.height;
+		viewport.width = (f32)state->SwapChain.Extent.width;
+		viewport.height = (f32)state->SwapChain.Extent.height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 
 		VkRect2D scissor{};
 		scissor.offset = { 0, 0 };
-		scissor.extent = state->SwapChainExtent;
+		scissor.extent = state->SwapChain.Extent;
 
 		VkPipelineViewportStateCreateInfo viewportState{};
 		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -779,25 +780,25 @@ namespace handmade {
 
 	static bool VulkanCreateFramebuffers(VulkanState* state) {
 
-		state->SwapChainFramebuffers = (VkFramebuffer*)malloc(state->SwapChainImageViewCount * sizeof(VkFramebuffer));
-		state->SwapChainFramebufferCount = state->SwapChainImageViewCount;
+		state->SwapChain.Framebuffers = (VkFramebuffer*)malloc(state->SwapChain.ImageViewCount * sizeof(VkFramebuffer));
+		state->SwapChain.FramebufferCount = state->SwapChain.ImageViewCount;
 
-		if (state->SwapChainFramebuffers) {
+		if (state->SwapChain.Framebuffers) {
 
 			bool complete = true;
-			for (u32 i = 0; i < state->SwapChainImageViewCount; i++) {
+			for (u32 i = 0; i < state->SwapChain.ImageViewCount; i++) {
 
-				VkImageView* imageView = (state->SwapChainImageViews + i);
+				VkImageView* imageView = (state->SwapChain.ImageViews + i);
 				VkFramebufferCreateInfo framebufferInfo{};
 				framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 				framebufferInfo.renderPass = state->Pipeline.RenderPass;
 				framebufferInfo.attachmentCount = 1;
 				framebufferInfo.pAttachments = imageView;
-				framebufferInfo.width = state->SwapChainExtent.width;
-				framebufferInfo.height = state->SwapChainExtent.height;
+				framebufferInfo.width = state->SwapChain.Extent.width;
+				framebufferInfo.height = state->SwapChain.Extent.height;
 				framebufferInfo.layers = 1;
 
-				if (vkCreateFramebuffer(state->Device, &framebufferInfo, nullptr, &state->SwapChainFramebuffers[i]) != VK_SUCCESS) {
+				if (vkCreateFramebuffer(state->Device, &framebufferInfo, nullptr, &state->SwapChain.Framebuffers[i]) != VK_SUCCESS) {
 
 					complete = false;
 				}
@@ -823,15 +824,25 @@ namespace handmade {
 		return vkCreateCommandPool(state->Device, &poolInfo, nullptr, &state->CommandPool) == VK_SUCCESS;
 	}
 
-	static bool VulkanCreateCommandBuffer(VulkanState* state) {
+	static bool VulkanCreateCommandBuffers(VulkanState* state) {
 
-		VkCommandBufferAllocateInfo allocInfo{};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = state->CommandPool;
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = 1;
+		state->CommandBuffers = (VkCommandBuffer*)malloc(FramesInFlight * sizeof(VkCommandBuffer));
+		state->CommandBufferCount = FramesInFlight;
 
-		return vkAllocateCommandBuffers(state->Device, &allocInfo, &state->CommandBuffer) == VK_SUCCESS;
+		if (state->CommandBuffers) {
+
+			VkCommandBufferAllocateInfo allocInfo{};
+			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocInfo.commandPool = state->CommandPool;
+			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocInfo.commandBufferCount = state->CommandBufferCount;
+		
+			return vkAllocateCommandBuffers(state->Device, &allocInfo, state->CommandBuffers) == VK_SUCCESS;
+		}
+		else {
+
+			return false;
+		}
 	}
 
 	static bool VulkanRecordCommandBuffer(VulkanState* state, VkCommandBuffer commandBuffer, u32 imageIndex) {
@@ -847,9 +858,9 @@ namespace handmade {
 		VkRenderPassBeginInfo renderPassInfo{};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = state->Pipeline.RenderPass;
-		renderPassInfo.framebuffer = *(state->SwapChainFramebuffers + imageIndex);
+		renderPassInfo.framebuffer = *(state->SwapChain.Framebuffers + imageIndex);
 		renderPassInfo.renderArea.offset = { 0 , 0 };
-		renderPassInfo.renderArea.extent = state->SwapChainExtent;
+		renderPassInfo.renderArea.extent = state->SwapChain.Extent;
 
 		VkClearValue clearColor = { {{0.0f, 0.0f, 0.0f, 1.0f}} };
 		renderPassInfo.clearValueCount = 1;
@@ -867,18 +878,132 @@ namespace handmade {
 
 	static bool VulkanCreateSyncObjects(VulkanState* state) {
 
-		VkSemaphoreCreateInfo semaphoreInfo{};
-		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		state->ImageAvailableSemaphores = (VkSemaphore*)malloc(FramesInFlight * sizeof(VkSemaphore));
+		state->ImageAvailableSemaphoreCount = FramesInFlight;
 
-		VkFenceCreateInfo fenceInfo{};
-		fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+		state->RenderFinishedSemaphores = (VkSemaphore*)malloc(FramesInFlight * sizeof(VkSemaphore));
+		state->RenderFinishedSemaphoreCount = FramesInFlight;
 
-		VkResult imageAvailable = vkCreateSemaphore(state->Device, &semaphoreInfo, nullptr, &state->ImageAvailableSemaphore);
-		VkResult renderFinished = vkCreateSemaphore(state->Device, &semaphoreInfo, nullptr, &state->RenderFinishedSemaphore);
-		VkResult inFlight = vkCreateFence(state->Device, &fenceInfo, nullptr, &state->InFlightFence);
+		state->InFlightFences = (VkFence*)malloc(FramesInFlight * sizeof(VkFence));
+		state->InFlightFenceCount = FramesInFlight;
 
-		return imageAvailable == VK_SUCCESS && renderFinished == VK_SUCCESS && inFlight == VK_SUCCESS;
+		if (state->ImageAvailableSemaphores && state->RenderFinishedSemaphores && state->InFlightFences) {
+
+			VkSemaphoreCreateInfo semaphoreInfo{};
+			semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+			VkFenceCreateInfo fenceInfo{};
+			fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+			fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+			bool complete = true;
+			for (u32 i = 0; i < FramesInFlight; i++) {
+
+				VkSemaphore* imageAvailableSemaphore = (state->ImageAvailableSemaphores + i);
+				VkSemaphore* renderFinishedSemaphore = (state->RenderFinishedSemaphores + i);
+				VkFence* inFlightFence = (state->InFlightFences + i);
+
+				VkResult imageAvailable = vkCreateSemaphore(state->Device, &semaphoreInfo, nullptr, imageAvailableSemaphore);
+				VkResult renderFinished = vkCreateSemaphore(state->Device, &semaphoreInfo, nullptr, renderFinishedSemaphore);
+				VkResult inFlight = vkCreateFence(state->Device, &fenceInfo, nullptr, inFlightFence);
+
+				if (imageAvailable != VK_SUCCESS || renderFinished != VK_SUCCESS || inFlight != VK_SUCCESS) {
+
+					complete = false;
+					break;
+				}
+			}
+
+			return complete;
+		}
+		else {
+
+			return false;
+		}
+	}
+
+	static void VulkanFramebufferResizeCallback(GLFWwindow* window, i32 width, i32 height) {
+
+		VulkanState* state = (VulkanState*)glfwGetWindowUserPointer(window);
+		state->SwapChain.FramebufferResized;
+	}
+
+	static bool VulkanCreateFramebufferResizeCallback(VulkanState* state, Window* window) {
+
+		glfwSetWindowUserPointer(window->NativeHandle, state);
+		glfwSetFramebufferSizeCallback(window->NativeHandle, VulkanFramebufferResizeCallback);
+	}
+
+	static void VulkanCleanupSwapChain(VulkanState* state) {
+
+		vkDeviceWaitIdle(state->Device);
+
+		// Framebuffers
+		for (u32 i = 0; i < state->SwapChain.FramebufferCount; i++) {
+
+			VkFramebuffer* framebuffer = (state->SwapChain.Framebuffers + i);
+			vkDestroyFramebuffer(state->Device, *framebuffer, nullptr);
+		}
+		free(state->SwapChain.Framebuffers);
+
+		// Pipeline
+		vkDestroyPipeline(state->Device, state->Pipeline.GraphicsPipeline, nullptr);
+		vkDestroyPipelineLayout(state->Device, state->Pipeline.PipeLineLayout, nullptr);
+		vkDestroyRenderPass(state->Device, state->Pipeline.RenderPass, nullptr);
+
+		// Image Views
+		for (u32 i = 0; i < state->SwapChain.ImageViewCount; i++) {
+
+			VkImageView* imageView = (state->SwapChain.ImageViews + i);
+			vkDestroyImageView(state->Device, *imageView, nullptr);
+		}
+		free(state->SwapChain.ImageViews);
+
+		// SwapChain
+		vkDestroySwapchainKHR(state->Device, state->SwapChain.SwapChain, nullptr);
+		free(state->SwapChain.Images);
+	}
+
+	static bool VulkanRecreateSwapChain(VulkanState* state, Window* window) {
+
+		// Wait while the window size is zero
+		i32 width{};
+		i32 height{};
+		glfwGetFramebufferSize(window->NativeHandle, &width, &height);
+		while (width == 0 || height == 0) {
+
+			glfwGetFramebufferSize(window->NativeHandle, &width, &height);
+			glfwWaitEvents();
+		}
+
+		VulkanCleanupSwapChain(state);
+
+		if (!VulkanCreateSwapChain(state, window)) {
+
+			return false;
+		}
+
+		if (!VulkanCreateImageViews(state)) {
+
+			return false;
+		}
+
+		if (!VulkanCreateRenderPass(state)) {
+
+			return false;
+		}
+
+		if (!VulkanCreateGraphicsPipeline(state)) {
+
+			return false;
+		}
+
+		if (!VulkanCreateFramebuffers(state)) {
+
+			return false;
+		}
+
+		return true;
 	}
 
 	bool VulkanStateInit(VulkanState* state, Window* window) {
@@ -950,7 +1075,7 @@ namespace handmade {
 		}
 
 		// Command Buffer
-		if (!VulkanCreateCommandBuffer(state)) {
+		if (!VulkanCreateCommandBuffers(state)) {
 
 			return false;
 		}
@@ -965,39 +1090,24 @@ namespace handmade {
 
 	bool VulkanStateDestroy(VulkanState* state) {
 
-		vkDeviceWaitIdle(state->Device);
-
-		vkDestroyCommandPool(state->Device, state->CommandPool, nullptr);
+		VulkanCleanupSwapChain(state);
 
 		// Sync Objects
-		vkDestroySemaphore(state->Device, state->ImageAvailableSemaphore, nullptr);
-		vkDestroySemaphore(state->Device, state->RenderFinishedSemaphore, nullptr);
-		vkDestroyFence(state->Device, state->InFlightFence, nullptr);
+		for (u32 i = 0; i < FramesInFlight; i++) {
 
-		// Framebuffers
-		for (u32 i = 0; i < state->SwapChainFramebufferCount; i++) {
+			VkSemaphore* imageAvailableSemaphore = (state->ImageAvailableSemaphores + i);
+			VkSemaphore* renderFinishedSemaphore = (state->RenderFinishedSemaphores + i);
+			VkFence* inFlightFence = (state->InFlightFences + i);
 
-			VkFramebuffer* framebuffer = (state->SwapChainFramebuffers + i);
-			vkDestroyFramebuffer(state->Device, *framebuffer, nullptr);
+			vkDestroySemaphore(state->Device, *renderFinishedSemaphore, nullptr);
+			vkDestroySemaphore(state->Device, *imageAvailableSemaphore, nullptr);
+			vkDestroyFence(state->Device, *inFlightFence, nullptr);
 		}
-		free(state->SwapChainFramebuffers);
+		free(state->ImageAvailableSemaphores);
+		free(state->RenderFinishedSemaphores);
 
-		// Pipeline
-		vkDestroyPipeline(state->Device, state->Pipeline.GraphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(state->Device, state->Pipeline.PipeLineLayout, nullptr);
-		vkDestroyRenderPass(state->Device, state->Pipeline.RenderPass, nullptr);
-
-		// Image Views
-		for (u32 i = 0; i < state->SwapChainImageViewCount; i++) {
-
-			VkImageView* imageView = (state->SwapChainImageViews + i);
-			vkDestroyImageView(state->Device, *imageView, nullptr);
-		}
-		free(state->SwapChainImageViews);
-
-		// SwapChain
-		vkDestroySwapchainKHR(state->Device, state->SwapChain, nullptr);
-		free(state->SwapChainImages);
+		vkDestroyCommandPool(state->Device, state->CommandPool, nullptr);
+		free(state->CommandBuffers);
 
 		// Device
 		vkDestroyDevice(state->Device, nullptr);
@@ -1015,30 +1125,46 @@ namespace handmade {
 		return true;
 	}
 
-	bool VulkanStateDrawFrame(VulkanState* state) {
+	bool VulkanStateDrawFrame(VulkanState* state, Window* window) {
 
-		vkWaitForFences(state->Device, 1, &state->InFlightFence, VK_TRUE, UINT64_MAX);
-		vkResetFences(state->Device, 1, &state->InFlightFence);
+		VkSemaphore* imageAvailableSemaphore = (state->ImageAvailableSemaphores + state->CurrentFrame);
+		VkSemaphore* renderFinishedSemaphore = (state->RenderFinishedSemaphores + state->CurrentFrame);
+		VkFence* inFlightFence = (state->InFlightFences + state->CurrentFrame);
+		VkCommandBuffer* commandBuffer = (state->CommandBuffers + state->CurrentFrame);
+
+		vkWaitForFences(state->Device, 1, inFlightFence, VK_TRUE, UINT64_MAX);
 
 		u32 imageIndex{};
-		vkAcquireNextImageKHR(state->Device, state->SwapChain, UINT64_MAX, state->ImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+		VkResult result = vkAcquireNextImageKHR(state->Device, state->SwapChain.SwapChain, UINT64_MAX, *imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 
-		vkResetCommandBuffer(state->CommandBuffer, 0);
-		VulkanRecordCommandBuffer(state, state->CommandBuffer, imageIndex);
+			state->SwapChain.FramebufferResized = false;
+			VulkanRecreateSwapChain(state, window);
+			return true;
+		}
+		else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+
+			return false;
+		}		
+		
+		vkResetFences(state->Device, 1, inFlightFence);
+
+		vkResetCommandBuffer(*commandBuffer, 0);
+		VulkanRecordCommandBuffer(state, *commandBuffer, imageIndex);
 
 		VkPipelineStageFlags waitStages[1] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &state->ImageAvailableSemaphore;
+		submitInfo.pWaitSemaphores = imageAvailableSemaphore;
 		submitInfo.pWaitDstStageMask = waitStages;
 		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &state->CommandBuffer;
+		submitInfo.pCommandBuffers = commandBuffer;
 		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &state->RenderFinishedSemaphore;
+		submitInfo.pSignalSemaphores = renderFinishedSemaphore;
 
-		if (vkQueueSubmit(state->GraphicsQueue, 1, &submitInfo, state->InFlightFence) != VK_SUCCESS) {
+		if (vkQueueSubmit(state->GraphicsQueue, 1, &submitInfo, *inFlightFence) != VK_SUCCESS) {
 
 			return false;
 		}
@@ -1046,13 +1172,15 @@ namespace handmade {
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &state->RenderFinishedSemaphore;
+		presentInfo.pWaitSemaphores = renderFinishedSemaphore;
 		presentInfo.swapchainCount = 1;
-		presentInfo.pSwapchains = &state->SwapChain;
+		presentInfo.pSwapchains = &state->SwapChain.SwapChain;
 		presentInfo.pImageIndices = &imageIndex;
 		presentInfo.pResults = nullptr;
 
 		vkQueuePresentKHR(state->PresentQueue, &presentInfo);
+
+		state->CurrentFrame = (state->CurrentFrame + 1) & FramesInFlight;
 
 		return true;
 	}

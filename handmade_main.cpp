@@ -11,9 +11,9 @@ int main(int argc, char** argv) {
 		handmade::VulkanState vulkanState{};
 		if (handmade::VulkanStateInit(&vulkanState, &window)) {
 
-			while (window.Running) {
+			while (handmade::WindowIsRunning(&window)) {
 
-				handmade::VulkanStateDrawFrame(&vulkanState);
+				handmade::VulkanStateDrawFrame(&vulkanState, &window);
 				handmade::WindowUpdate(&window);
 			}
 		}

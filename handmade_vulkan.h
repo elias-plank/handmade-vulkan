@@ -19,6 +19,21 @@ namespace handmade {
 		u32 Size;
 	};
 
+	struct VulkanSwapChain {
+
+		VkSwapchainKHR SwapChain;
+		VkImage* Images;
+		u32 ImageCount;
+		VkFormat ImageFormat;
+		VkExtent2D Extent;
+		VkImageView* ImageViews;
+		u32 ImageViewCount;
+
+		VkFramebuffer* Framebuffers;
+		u32 FramebufferCount;
+		bool FramebufferResized;
+	};
+
 	struct VulkanPipeline {
 
 		VkRenderPass RenderPass;
@@ -38,25 +53,21 @@ namespace handmade {
 		VkQueue GraphicsQueue;
 		VkQueue PresentQueue;
 
-		VkSwapchainKHR SwapChain;
-		VkImage* SwapChainImages;
-		u32 SwapChainImageCount;
-		VkFormat SwapChainImageFormat;
-		VkExtent2D SwapChainExtent;
-		VkImageView* SwapChainImageViews;
-		u32 SwapChainImageViewCount;
-
+		VulkanSwapChain SwapChain;
 		VulkanPipeline Pipeline;
 
-		VkFramebuffer* SwapChainFramebuffers;
-		u32 SwapChainFramebufferCount;
-
 		VkCommandPool CommandPool;
-		VkCommandBuffer CommandBuffer;
+		VkCommandBuffer* CommandBuffers;
+		u32 CommandBufferCount;
 
-		VkSemaphore ImageAvailableSemaphore;
-		VkSemaphore RenderFinishedSemaphore;
-		VkFence InFlightFence;
+		VkSemaphore* ImageAvailableSemaphores;
+		u32 ImageAvailableSemaphoreCount;
+		VkSemaphore* RenderFinishedSemaphores;
+		u32 RenderFinishedSemaphoreCount;
+		VkFence* InFlightFences;
+		u32 InFlightFenceCount;
+
+		u32 CurrentFrame;
 	};
 
 	struct VulkanQueueFamilyIndices {
@@ -78,7 +89,7 @@ namespace handmade {
 
 	bool VulkanStateInit(VulkanState* state, Window* window);
 	bool VulkanStateDestroy(VulkanState* state);
-	bool VulkanStateDrawFrame(VulkanState* state);
+	bool VulkanStateDrawFrame(VulkanState* state, Window* window);
 
 	VulkanShaderCode VulkanLoadShaderCode(const char* path);
 }
