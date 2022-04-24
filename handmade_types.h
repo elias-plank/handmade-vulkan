@@ -4,6 +4,7 @@
 #define HANDMADE_TYPES_H
 
 #include <cstdint>
+#include <vulkan/vulkan.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
@@ -21,6 +22,33 @@ namespace handmade {
 
 	typedef float f32;
 	typedef double f64;
+
+	struct Vector2 {
+
+		f32 X;
+		f32 Y;
+	};
+
+	struct Vector3 {
+
+		f32 X;
+		f32 Y;
+		f32 Z;
+	};
+
+	struct Vertex {
+
+		Vector3 Position;
+		Vector3 Color;
+	};
+
+	struct VertexDescription {
+
+		VkVertexInputBindingDescription Binding;
+		VkVertexInputAttributeDescription Attributes[2];
+	};
+
+	VertexDescription VertexGetDescription();
 }
 
 #endif //HANDMADE_TYPES_H

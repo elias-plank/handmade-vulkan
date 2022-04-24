@@ -645,12 +645,14 @@ namespace handmade {
 
 		VkPipelineShaderStageCreateInfo shaderStages[2] = { vertexShaderStageInfo, fragmentShaderStageInfo };
 
+		VertexDescription vertexDescription = VertexGetDescription();
+
 		VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
 		vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputInfo.vertexBindingDescriptionCount = 0;
-		vertexInputInfo.pVertexBindingDescriptions = nullptr;
-		vertexInputInfo.vertexAttributeDescriptionCount = 0;
-		vertexInputInfo.pVertexAttributeDescriptions = nullptr;
+		vertexInputInfo.vertexBindingDescriptionCount = 1;
+		vertexInputInfo.vertexAttributeDescriptionCount = ARRAY_SIZE(vertexDescription.Attributes);
+		vertexInputInfo.pVertexBindingDescriptions = &vertexDescription.Binding;
+		vertexInputInfo.pVertexAttributeDescriptions = vertexDescription.Attributes;
 
 		VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
 		inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -824,6 +826,98 @@ namespace handmade {
 		return vkCreateCommandPool(state->Device, &poolInfo, nullptr, &state->CommandPool) == VK_SUCCESS;
 	}
 
+	static u32 VulkanFindMemoryType(VulkanState* state, u32 typeFilter, VkMemoryPropertyFlags properties) {
+
+		VkPhysicalDeviceMemoryProperties memProperties{};
+		vkGetPhysicalDeviceMemoryProperties(state->PhysicalDevice, &memProperties);
+
+		for (u32 i = 0; i < memProperties.memoryTypeCount; i++) {
+
+			if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+
+				return i + 1;
+			}
+		}
+
+		return 0;
+	}
+
+	static bool VulkanCreateBuffer(VulkanState* state, VulkanBuffer* buffer, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) {
+
+		VkBufferCreateInfo bufferInfo{};
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.size = size;
+		bufferInfo.usage = usage;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+		if (vkCreateBuffer(state->Device, &bufferInfo, nullptr, &buffer->Buffer) != VK_SUCCESS) {
+
+			return false;
+		}
+
+		VkMemoryRequirements memRequirements{};
+		vkGetBufferMemoryRequirements(state->Device, buffer->Buffer, &memRequirements);
+
+		u32 memoryTypeIndex = VulkanFindMemoryType(state, memRequirements.memoryTypeBits, properties);
+
+		if (memoryTypeIndex == 0) {
+
+			return false;
+		}
+
+		VkMemoryAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = memoryTypeIndex - 1;
+
+		if (vkAllocateMemory(state->Device, &allocInfo, nullptr, &buffer->BufferMemory) != VK_SUCCESS) {
+
+			return false;
+		}
+
+		vkBindBufferMemory(state->Device, buffer->Buffer, buffer->BufferMemory, 0);
+
+		return true;
+	}
+
+	static bool VulkanCopyBuffer(VulkanState* state, VkBuffer source, VkBuffer destination, VkDeviceSize size) {
+
+		VkCommandBufferAllocateInfo allocInfo{};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		allocInfo.commandPool = state->CommandPool;
+		allocInfo.commandBufferCount = 1;
+
+		VkCommandBuffer commandBuffer{};
+		vkAllocateCommandBuffers(state->Device, &allocInfo, &commandBuffer);
+
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+		vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+		VkBufferCopy copyRegion{};
+		copyRegion.srcOffset = 0;
+		copyRegion.dstOffset = 0;
+		copyRegion.size = size;
+		vkCmdCopyBuffer(commandBuffer, source, destination, 1, &copyRegion);
+
+		vkEndCommandBuffer(commandBuffer);
+
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+
+		vkQueueSubmit(state->GraphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+		vkQueueWaitIdle(state->GraphicsQueue);
+
+		vkFreeCommandBuffers(state->Device, state->CommandPool, 1, &commandBuffer);
+
+		return true;
+	}
+
 	static bool VulkanCreateCommandBuffers(VulkanState* state) {
 
 		state->CommandBuffers = (VkCommandBuffer*)malloc(FramesInFlight * sizeof(VkCommandBuffer));
@@ -845,7 +939,7 @@ namespace handmade {
 		}
 	}
 
-	static bool VulkanRecordCommandBuffer(VulkanState* state, VkCommandBuffer commandBuffer, u32 imageIndex) {
+	static bool VulkanRecordCommandBuffer(VulkanState* state, VkCommandBuffer commandBuffer, u32 imageIndex, VkBuffer vertexBuffer, VkBuffer indexBuffer, u32 indexCount) {
 
 		VkCommandBufferBeginInfo beginInfo{};
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -869,7 +963,11 @@ namespace handmade {
 		vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		{
 			vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, state->Pipeline.GraphicsPipeline);
-			vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertexBuffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffer, indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdDrawIndexed(commandBuffer, indexCount, 1, 0, 0, 0);
 		}
 		vkCmdEndRenderPass(commandBuffer);
 
@@ -1090,8 +1188,9 @@ namespace handmade {
 
 	bool VulkanStateDestroy(VulkanState* state) {
 
+		// Swap Chain
 		VulkanCleanupSwapChain(state);
-
+		
 		// Sync Objects
 		for (u32 i = 0; i < FramesInFlight; i++) {
 
@@ -1125,7 +1224,85 @@ namespace handmade {
 		return true;
 	}
 
-	bool VulkanStateDrawFrame(VulkanState* state, Window* window) {
+	bool VulkanCreateVertexBuffer(VulkanState* state, VulkanBuffer* vertexBuffer, Vertex* vertices, u32 count) {
+
+		VkDeviceSize bufferSize = count * sizeof(Vertex);
+		VulkanBuffer stagingBuffer{};
+
+		// Create the staging buffer
+		if (!VulkanCreateBuffer(state, &stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+
+			return false;
+		}
+
+		void* data;
+		vkMapMemory(state->Device, stagingBuffer.BufferMemory, 0, bufferSize, 0, &data);
+		memcpy(data, vertices, (size_t)bufferSize);
+		vkUnmapMemory(state->Device, stagingBuffer.BufferMemory);
+
+		// Create the vertex buffer
+		if (!VulkanCreateBuffer(state, vertexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+
+			return false;
+		}
+
+		if (!VulkanCopyBuffer(state, stagingBuffer.Buffer, vertexBuffer->Buffer, bufferSize)) {
+
+			return false;
+		}
+
+		vkDestroyBuffer(state->Device, stagingBuffer.Buffer, nullptr);
+		vkFreeMemory(state->Device, stagingBuffer.BufferMemory, nullptr);
+
+		return true;
+	}
+
+	void VulkanDestroyVertexBuffer(VulkanState* state, VulkanBuffer* vertexBuffer) {
+
+		vkDeviceWaitIdle(state->Device);
+		vkDestroyBuffer(state->Device, vertexBuffer->Buffer, nullptr);
+		vkFreeMemory(state->Device, vertexBuffer->BufferMemory, nullptr);
+	}
+
+	bool VulkanCreateIndexBuffer(VulkanState* state, VulkanBuffer* indexBuffer, u32* indices, u32 count) {
+
+		VkDeviceSize bufferSize = count * sizeof(u32);
+		VulkanBuffer stagingBuffer{};
+
+		if (!VulkanCreateBuffer(state, &stagingBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+
+			return false;
+		}
+
+		void* data;
+		vkMapMemory(state->Device, stagingBuffer.BufferMemory, 0, bufferSize, 0, &data);
+		memcpy(data, indices, (size_t)bufferSize);
+		vkUnmapMemory(state->Device, stagingBuffer.BufferMemory);
+
+		if (!VulkanCreateBuffer(state, indexBuffer, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+
+			return false;
+		}
+
+		if (!VulkanCopyBuffer(state, stagingBuffer.Buffer, indexBuffer->Buffer, bufferSize)) {
+
+			return false;
+		}
+
+		vkDestroyBuffer(state->Device, stagingBuffer.Buffer, nullptr);
+		vkFreeMemory(state->Device, stagingBuffer.BufferMemory, nullptr);
+
+		return false;
+	}
+
+	void VulkanDestroyIndexBuffer(VulkanState* state, VulkanBuffer* indexBuffer) {
+
+		vkDeviceWaitIdle(state->Device);
+		vkDestroyBuffer(state->Device, indexBuffer->Buffer, nullptr);
+		vkFreeMemory(state->Device, indexBuffer->BufferMemory, nullptr);
+	}
+
+	bool VulkanDrawIndexed(VulkanState* state, Window* window, VulkanBuffer* vertexBuffer, VulkanBuffer* indexBuffer, u32 indexCount) {
 
 		VkSemaphore* imageAvailableSemaphore = (state->ImageAvailableSemaphores + state->CurrentFrame);
 		VkSemaphore* renderFinishedSemaphore = (state->RenderFinishedSemaphores + state->CurrentFrame);
@@ -1145,12 +1322,12 @@ namespace handmade {
 		else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 
 			return false;
-		}		
+		}
 		
 		vkResetFences(state->Device, 1, inFlightFence);
 
 		vkResetCommandBuffer(*commandBuffer, 0);
-		VulkanRecordCommandBuffer(state, *commandBuffer, imageIndex);
+		VulkanRecordCommandBuffer(state, *commandBuffer, imageIndex, vertexBuffer->Buffer, indexBuffer->Buffer, indexCount);
 
 		VkPipelineStageFlags waitStages[1] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
@@ -1184,7 +1361,7 @@ namespace handmade {
 
 		return true;
 	}
-	
+
 	VulkanShaderCode VulkanLoadShaderCode(const char* path) {
 
 		VulkanShaderCode shaderCode{};

@@ -1,27 +1,56 @@
 #include "handmade_vulkan.h"
 #include "handmade_window.h"
 
-int main(int argc, char** argv) {
+namespace handmade {
 
-	// Window
-	handmade::Window window{};
-	if (handmade::WindowCreate(&window, "Handmade Vulkan", 800, 600)) {
+	int Main(int argc, char** argv) {
 
-		// Vulkan
-		handmade::VulkanState vulkanState{};
-		if (handmade::VulkanStateInit(&vulkanState, &window)) {
+		Window window{};
+		if (WindowCreate(&window, "Handmade Vulkan", 800, 600)) {
 
-			while (handmade::WindowIsRunning(&window)) {
+			// Vulkan
+			VulkanState vulkanState{};
+			if (VulkanStateInit(&vulkanState, &window)) {
 
-				handmade::VulkanStateDrawFrame(&vulkanState, &window);
-				handmade::WindowUpdate(&window);
+				Vertex vertices[4] = {
+
+					{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+					{{ 0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+					{{ 0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}},
+					{{-0.5f,  0.5f}, {1.0f, 1.0f, 1.0f}}
+				};
+
+				u32 indices[6] = {
+
+					0, 1, 2, 2, 3, 0
+				};
+
+				VulkanBuffer vertexBuffer{};
+				VulkanCreateVertexBuffer(&vulkanState, &vertexBuffer, vertices, ARRAY_SIZE(vertices));
+
+				VulkanBuffer indexBuffer{};
+				VulkanCreateIndexBuffer(&vulkanState, &indexBuffer, indices, ARRAY_SIZE(indices));
+
+				while (WindowIsRunning(&window)) {
+
+					VulkanDrawIndexed(&vulkanState, &window, &vertexBuffer, &indexBuffer, ARRAY_SIZE(indices));
+					WindowUpdate(&window);
+				}
+
+				VulkanDestroyVertexBuffer(&vulkanState, &vertexBuffer);
+				VulkanDestroyIndexBuffer(&vulkanState, &indexBuffer);
 			}
+
+			VulkanStateDestroy(&vulkanState);
 		}
 
-		handmade::VulkanStateDestroy(&vulkanState);
-	}
-	
-	handmade::WindowDestroy(&window);
+		WindowDestroy(&window);
 
-	return 0;
+		return 0;
+	}
+}
+
+int main(int argc, char** argv) {
+
+	return handmade::Main(argc, argv);
 }

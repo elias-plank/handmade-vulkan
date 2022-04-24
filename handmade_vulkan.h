@@ -41,6 +41,12 @@ namespace handmade {
 		VkPipeline GraphicsPipeline;
 	};
 
+	struct VulkanBuffer {
+
+		VkBuffer Buffer;
+		VkDeviceMemory BufferMemory;
+	};
+
 	struct VulkanState {
 
 		VkInstance Instance;
@@ -87,9 +93,18 @@ namespace handmade {
 		u32 PresentModeCount;
 	};
 
+	// State Functions
 	bool VulkanStateInit(VulkanState* state, Window* window);
 	bool VulkanStateDestroy(VulkanState* state);
-	bool VulkanStateDrawFrame(VulkanState* state, Window* window);
+
+	// Drawing
+	bool VulkanDrawIndexed(VulkanState* state, Window* window, VulkanBuffer* vertexBuffer, VulkanBuffer* indexBuffer, u32 indexCount);
+
+	bool VulkanCreateVertexBuffer(VulkanState* state, VulkanBuffer* vertexBuffer, Vertex* vertices, u32 count);
+	void VulkanDestroyVertexBuffer(VulkanState* state, VulkanBuffer* vertexBuffer);
+
+	bool VulkanCreateIndexBuffer(VulkanState* state, VulkanBuffer* indexBuffer, u32* indices, u32 count);
+	void VulkanDestroyIndexBuffer(VulkanState* state, VulkanBuffer* indexBuffer);
 
 	VulkanShaderCode VulkanLoadShaderCode(const char* path);
 }
