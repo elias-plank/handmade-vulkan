@@ -1076,114 +1076,61 @@ namespace handmade {
 
 		VulkanCleanupSwapChain(state);
 
-		if (!VulkanCreateSwapChain(state, window)) {
+        u32 result = 1;
 
-			return false;
-		}
+		result &= (u32)VulkanCreateSwapChain(state, window);
+        result &= (u32)VulkanCreateImageViews(state);
+        result &= (u32)VulkanCreateRenderPass(state);
+        result &= (u32)VulkanCreateGraphicsPipeline(state);
+        result &= (u32)VulkanCreateFramebuffers(state);
 
-		if (!VulkanCreateImageViews(state)) {
-
-			return false;
-		}
-
-		if (!VulkanCreateRenderPass(state)) {
-
-			return false;
-		}
-
-		if (!VulkanCreateGraphicsPipeline(state)) {
-
-			return false;
-		}
-
-		if (!VulkanCreateFramebuffers(state)) {
-
-			return false;
-		}
-
-		return true;
+		return result;
 	}
 
 	bool VulkanStateInit(VulkanState* state, Window* window) {
 
-		// Instance
-		if (!VulkanCreateInstance(state)) {
+        u32 result = 1;
 
-			return false;
-		}
+		// Instance
+        result &= (u32)VulkanCreateInstance(state);
 
 		// Debug Messenger
-		if (!VulkanCreateDebugMessenger(state)) {
-
-			return false;
-		}
+        result &= (u32)VulkanCreateDebugMessenger(state);
 
 		// Create Surface
-		if (!VulkanCreateSurface(state, window)) {
-
-			return false;
-		}
+        result &= (u32)VulkanCreateSurface(state, window);
 
 		// Pick a Physical Device (GPU)
-		if (!VulkanPickPhysicalDevice(state)) {
+        result &= (u32)VulkanPickPhysicalDevice(state);
 
-			return false;
-		}
-
-		// Create Logical Device
-		if (!VulkanCreateLogicalDevice(state)) {
-
-			return false;
-		}
+		// Create logical Device
+        result &= (u32)VulkanCreateLogicalDevice(state);
 
 		// SwapChain
-		if (!VulkanCreateSwapChain(state, window)) {
-
-			return false;
-		}
+        result &= (u32)VulkanCreateSwapChain(state, window);
 
 		// Image Views
-		if (!VulkanCreateImageViews(state)) {
+        result &= (u32)VulkanCreateImageViews(state);
 
-			return false;
-		}
-
-		// Render Pass
-		if (!VulkanCreateRenderPass(state)) {
-
-			return false;
-		}
+		// Render pass
+        result &= (u32)VulkanCreateRenderPass(state);
 
 		// Graphics Pipeline
-		if (!VulkanCreateGraphicsPipeline(state)) {
-
-			return false;
-		}
+        result &= (u32)VulkanCreateGraphicsPipeline(state);
 
 		// Framebuffers
-		if (!VulkanCreateFramebuffers(state)) {
-
-			return false;
-		}
+        result &= (u32)VulkanCreateFramebuffers(state);
 
 		// Command Pool
-		if (!VulkanCreateCommandPool(state)) {
-
-			return false;
-		}
+        result &= (u32)VulkanCreateCommandPool(state);
 
 		// Command Buffer
-		if (!VulkanCreateCommandBuffers(state)) {
+        result &= (u32)VulkanCreateCommandBuffers(state);
 
-			return false;
-		}
+        // Sync Objects
+        result &= (u32)VulkanCreateSyncObjects(state);
 
-		if (!VulkanCreateSyncObjects(state)) {
-
-			return false;
-		}
-
-		return true;
+		return result;
 	}
 
 	bool VulkanStateDestroy(VulkanState* state) {

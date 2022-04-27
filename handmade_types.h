@@ -23,6 +23,8 @@ namespace handmade {
 	typedef float f32;
 	typedef double f64;
 
+    typedef u32 b32;
+
 	struct Vector2 {
 
 		f32 X;
