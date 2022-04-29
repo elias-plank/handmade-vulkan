@@ -91,11 +91,11 @@ namespace handmade {
 				
 				vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions);
 				
-				std::fprintf(stdout, "[Vulkan] - Available Extensions:\n");
+				fprintf(stdout, "[Vulkan] - Available Extensions:\n");
 				for (u32 i = 0; i < extensionCount; i++) {
 					
 					VkExtensionProperties* property = (extensions + i);
-					std::fprintf(stdout, "\t%s\n", property->extensionName);
+					fprintf(stdout, "\t%s\n", property->extensionName);
 				}
 				free(extensions);
 			}
@@ -112,7 +112,7 @@ namespace handmade {
 		
 		if (severity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
 			
-			std::fprintf(stderr, "[Vulkan] [Validation] - %s}\n", callbackData->pMessage);
+			fprintf(stderr, "[Vulkan] [Validation] - %s}\n", callbackData->pMessage);
 		}
 		
 		return VK_FALSE;
@@ -576,7 +576,7 @@ namespace handmade {
 		VkShaderModule shaderModule{};
 		if (vkCreateShaderModule(state->Device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
 			
-			std::fprintf(stderr, "Couldn't create shader!");
+			fprintf(stderr, "Couldn't create shader!");
 		}
 		
 		return shaderModule;
