@@ -6,7 +6,6 @@
 #include "handmade_types.h"
 
 #pragma warning(disable : 26812)
-#define VK_USE_PLATFORM_WIN32_KHR
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
@@ -16,16 +15,16 @@
 #include <cassert>
 
 namespace handmade {
-
+	
 	struct Window {
-
+		
 		GLFWwindow* NativeHandle;
 		const char* Title;
 		u32 Width;
 		u32 Height;
 		bool Running;
 	};
-
+	
 	bool WindowCreate(Window* window, const char* title, u32 width, u32 height);
 	bool WindowIsRunning(Window* window);
 	void WindowUpdate(Window* window);
