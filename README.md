@@ -2,7 +2,7 @@
 
 Vulkan Programs written in C++ with no STL.
 
-![vulkan-logo](https://raw.githubusercontent.com/PlanEl180223/handmade-vulkan/main/assets/vulkan_logo.png?token=GHSAT0AAAAAABP725TTFDFC3Y3KYZ4ZQJPGYS7GV7Q)
+![vulkan](https://github.com/elias-plank/handmade-vulkan/assets/45200003/12b63597-e813-4dd0-8c72-6af010cb1cdc)
 
 ## Requirements
 - [CMake](https://cmake.org)
